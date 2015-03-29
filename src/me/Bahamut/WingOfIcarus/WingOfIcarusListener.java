@@ -10,6 +10,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitScheduler;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 /**
@@ -28,14 +30,13 @@ public class WingOfIcarusListener implements Listener
     @EventHandler
     public void onFeatherClick(PlayerInteractEvent e)
     {
-        if (e.getAction() == Action.RIGHT_CLICK_AIR)
+        final Player player = e.getPlayer();
+        if (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK)
         {
-            final Player player = e.getPlayer();
-
             if (e.getItem().getType() == Material.FEATHER && !player.getAllowFlight() && !player.isFlying())
             {
                 // Store the player into a flying list.
-                player.sendMessage(plugin.c.pluginName + "I'm flying!");
+                player.sendMessage(plugin.c.pluginName + "You feel lighter...");
                 player.setAllowFlight(true);
                 player.setFlying(true);
 
@@ -46,12 +47,19 @@ public class WingOfIcarusListener implements Listener
                     public void run()
                     {
                         final Player thePlayer = player;
-                        int itemIndex = player.getInventory().first(Material.FEATHER);
-                        if (itemIndex >= 0)
+                        int totalFeathersLeft = 0;
+
+                        HashMap<Integer, ? extends ItemStack> allFeathers = player.getInventory().all(Material.FEATHER);
+                        ArrayList<Integer> itemIndexList = new ArrayList();
+                        for (Integer key : allFeathers.keySet()) { itemIndexList.add(key); totalFeathersLeft += allFeathers.get(key).getAmount(); }
+                        Collections.sort(itemIndexList);
+
+                        if (allFeathers.size() > 0)
                         {
+                            int itemIndex = itemIndexList.get(itemIndexList.size() - 1);
                             ItemStack is = player.getInventory().getItem(itemIndex);
                             int itemLeft = is.getAmount();
-                            if (itemLeft <= 6) player.sendMessage(plugin.c.pluginName + yjColor.gold(Integer.toString(itemLeft - 1)) + " Feathers remaining!");
+                            if (totalFeathersLeft <= 6) player.sendMessage(plugin.c.pluginName + yjColor.gold(Integer.toString(totalFeathersLeft - 5)) + " Feathers remaining!");
                             if (itemLeft - 1 <= 0) player.getInventory().clear(itemIndex);
                             else is.setAmount(itemLeft - 1);
                             player.updateInventory();
@@ -65,7 +73,7 @@ public class WingOfIcarusListener implements Listener
                         player.setAllowFlight(false);
                         playerTaskMap.remove(player.getName());
                     }
-                }, 0L, 40L));
+                }, 0L, 80L));
             }
             else if (e.getItem().getType() == Material.FEATHER && player.getAllowFlight())
             {
@@ -76,6 +84,16 @@ public class WingOfIcarusListener implements Listener
                 BukkitScheduler scheduler = Bukkit.getServer().getScheduler();
                 scheduler.cancelTask(playerTaskMap.get(player.getName()));
                 playerTaskMap.remove(player.getName());
+            }
+        }
+        else if (e.getAction() == Action.LEFT_CLICK_AIR || e.getAction() == Action.LEFT_CLICK_BLOCK)
+        {
+            if (e.getItem().getType() == Material.FEATHER)
+            {
+                int totalFeathersLeft = 0;
+                HashMap<Integer, ? extends ItemStack> allFeathers = player.getInventory().all(Material.FEATHER);
+                for (Integer key : allFeathers.keySet()) totalFeathersLeft += allFeathers.get(key).getAmount();
+                player.sendMessage(plugin.c.pluginName + " You have " + yjColor.gold(Integer.toString(totalFeathersLeft)) + " Feathers (" + yjColor.gold(Integer.toString(totalFeathersLeft * 4)) + " seconds) left.");
             }
         }
     }
